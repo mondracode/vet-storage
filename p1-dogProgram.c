@@ -38,6 +38,17 @@ void getPatient(int position){
   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
   current_file = fopen("dataDogs.dat", "r");
 
+  //recibir posición máxima
+  fseek(current_file, 0L, SEEK_END);
+  int eof = ftell(current_file);
+  rewind(current_file);
+
+  if(position >= eof){
+    perror("El registro no existe.\n");
+    printf("------------------------\n");
+    exit(-1);
+  }
+
   fseek(current_file, position, SEEK_SET);
 
   int read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
@@ -142,7 +153,7 @@ void ht_get(ht_t *hashtable, const char *key) {
 
     // no slot means no entry
     if (entry == NULL) {
-        //print hey theres nothing
+        printf("No existen registros con el nombre especificado.\n" );
         return;
     }
 
@@ -152,9 +163,7 @@ void ht_get(ht_t *hashtable, const char *key) {
         if (strcmp(entry->key, key) == 0) {
             count++;
 
-            printf("-------Registro %i-------\n", count);
-            getPatient(entry -> value);
-            printf("---Fin del registro %i---\n", count);
+            printf("-> ID: %i\n", entry -> value/sizeof(struct dogType));
         }
 
         // proceed to next key if available
@@ -301,7 +310,7 @@ void ingresar(){
   }
 
   //crear historia medica
-  sprintf(pathname, "cd historias && touch %i.txt", current_position);
+  sprintf(pathname, "cd historias && touch %i.txt", current_position/sizeof(struct dogType));
   system(pathname);
 
   ht_set(ht, animal -> nombre, current_position);
@@ -319,14 +328,26 @@ void ingresar(){
 }
 
 void ver(){
-  int search;
+  int search, num;
   char choice;
   char *pathname;
 
+  current_file = fopen("dataDogs.dat" , "r");
+  //recibir tamaño del archivo
+  fseek(current_file, 0L, SEEK_END);
+  int sz = ftell(current_file);
+  //rewind(current_file);
+
+  fclose(current_file);
+
+  printf("\nEn el momento existen %d registros.\n", sz/sizeof(struct dogType));
+
   printf("Digite el numero del registro a revisar: ");
   scanf("%i", &search);
+  search--;
+  num = search;
 
-  printf("-------Registro %i-------\n", search);
+  printf("-------Registro %i-------\n", num + 1);
   getPatient(search * sizeof(struct dogType));
 
   while(1){
@@ -336,8 +357,7 @@ void ver(){
     if(choice == 's' || choice == 'S'){
       pathname = malloc(100);
       //abrir historia
-      sprintf(pathname, "nano historias/%i.txt", search);
-      printf("%s\n", pathname);
+      sprintf(pathname, "nano historias/%i.txt", num);
       system(pathname);
       free(pathname);
       break;
@@ -350,7 +370,7 @@ void ver(){
     }
   }
 
-  printf("---Fin del registro %i---\n", search);
+  printf("-------------------------\n");
 
   printf("Hecho!\n");
   printf("Presione cualquier tecla...");
@@ -427,6 +447,7 @@ int main(){
   fclose(current_file);
 
   while(1){
+    printf("-------------------------\n");
     printf("Sistemas Operativos - Practica 1. Bienvenido.\n");
     printf("\n1. Ingresar paciente.\n");
     printf("2. Ver paciente por numero.\n");
