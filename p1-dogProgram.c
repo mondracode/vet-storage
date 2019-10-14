@@ -391,7 +391,7 @@ void borrar(){
   char *pathname;
 
   current_file = fopen("dataDogs.dat" , "r");
-  new_file = fopen("tempDogs.dat" , "a");
+  new_file = fopen("tempDogs.dat" , "w");
 
   //recibir tamaño del archivo fuente
   fseek(current_file, 0L, SEEK_END);
@@ -408,8 +408,6 @@ void borrar(){
 
   search = search * sizeof(struct dogType);
 
-  printf("%i\n", search);
-
   //leer todo lo que esta antes de la estructura
   for(int i = 0; i < search; i++){
     c = getc(current_file);
@@ -421,23 +419,23 @@ void borrar(){
 
   //borrar historia medica asociada
   pathname = malloc(100);
-  sprintf(pathname, "cd historias && rm %i.txt", num - 1 );
+  sprintf(pathname, "cd historias && rm %i.txt &> /dev/null ", num - 1 );
   system(pathname);
   free(pathname);
 
   //renombrar todas las historias medicas para ser consistentes con la nueva tabla
   int remaining_bytes = (sz - ftell(current_file))/sizeof(struct dogType);
 
+  printf("%i\n", remaining_bytes);
 
-  for(int i = 0; i < remaining_bytes; i++){
+  for(int i = 0; i < remaining_bytes; i += sizeof(struct dogType)){
     pathname = malloc(100);
-    sprintf(pathname, "cd historias && mv %i.txt %i.txt", num, num-1 );
-    printf("%i\n", num);
-    printf("%s\n", pathname);
+    sprintf(pathname, "cd historias && mv %i.txt %i.txt &> /dev/null", num, num-1 );
     system(pathname);
 
     free(pathname);
-    num += sizeof(struct dogType);
+    printf("\n%i\n", i);
+    num++;
   }
 
   //leer todo lo que esta despues de la estructura
@@ -494,6 +492,7 @@ void loadHash(){
     read_result = fread(read_key, 1, KEY_SIZE, current_file);
 
     if(read_result != KEY_SIZE){
+      printf("%i ",read_result);
       perror("La lectura de los registros fallo.\n");
       exit(-1);
     }
@@ -506,7 +505,7 @@ void loadHash(){
 
   printf("Listo.\n");
 
-  ht_dump(ht);
+  //ht_dump(ht);
 
   //fclose(current_file);
 }
