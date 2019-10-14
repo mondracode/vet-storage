@@ -53,7 +53,7 @@ void getPatient(int position){
   printf("Raza: %s\n",      read_patient -> raza);
   printf("Estatura: %i\n",  read_patient -> estatura);
   printf("Peso: %f\n",      read_patient -> peso);
-  printf("Sexo: %c\n",        read_patient -> sexo);
+  printf("Sexo: %c\n",      read_patient -> sexo);
 
   free(read_patient);
   fclose(current_file);
@@ -249,6 +249,7 @@ ht_t *ht;
 
 void ingresar(){
   current_file = fopen("dataDogs.dat", "a");
+  char *pathname = malloc(100);
   struct dogType *animal;
   animal = (struct dogType*)malloc(sizeof(struct dogType));
 
@@ -299,6 +300,10 @@ void ingresar(){
     exit(-1);
   }
 
+  //crear historia medica
+  sprintf(pathname, "cd historias && touch %i.txt", current_position);
+  system(pathname);
+
   ht_set(ht, animal -> nombre, current_position);
 
   fclose(current_file);
@@ -315,11 +320,36 @@ void ingresar(){
 
 void ver(){
   int search;
+  char choice;
+  char *pathname;
+
   printf("Digite el numero del registro a revisar: ");
   scanf("%i", &search);
 
   printf("-------Registro %i-------\n", search);
   getPatient(search * sizeof(struct dogType));
+
+  while(1){
+    printf("¿Abrir historia medica del paciente? S/N: ");
+    scanf(" %[^\t\n]c", &choice);
+
+    if(choice == 's' || choice == 'S'){
+      pathname = malloc(100);
+      //abrir historia
+      sprintf(pathname, "nano historias/%i.txt", search);
+      printf("%s\n", pathname);
+      system(pathname);
+      free(pathname);
+      break;
+    }
+    else if(choice == 'n' || choice == 'N'){
+      break;
+    }
+    else{
+      continue;
+    }
+  }
+
   printf("---Fin del registro %i---\n", search);
 
   printf("Hecho!\n");
@@ -383,7 +413,7 @@ int main(){
 
   ht = ht_create();
 
-  current_file = fopen("dataDogs.dat", "r");
+  current_file = fopen("dataDogs.dat", "ab+");
 
   //recibir posición del final del archivo
   fseek(current_file, 0L, SEEK_END);
