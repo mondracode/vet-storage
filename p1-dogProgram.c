@@ -12,6 +12,7 @@ void ingresar();
 void ver();
 void borrar();
 void buscar();
+void loadHash();
 
 struct dogType{
   char nombre[KEY_SIZE];
@@ -163,7 +164,7 @@ void ht_get(ht_t *hashtable, const char *key) {
         if (strcmp(entry->key, key) == 0) {
             count++;
 
-            printf("-> ID: %i\n", entry -> value/sizeof(struct dogType));
+            printf("-> ID: %i\n", (entry -> value/sizeof(struct dogType))+1);
         }
 
         // proceed to next key if available
@@ -270,36 +271,41 @@ void ingresar(){
   printf("Tipo: ");
   scanf(" %[^\t\n]s", animal -> tipo);
 
-  printf("Edad: ");
-  scanf("%i", &animal -> edad);
-  if(animal -> edad < 0){
-    perror("Edad no valida");
-    exit(-1);
+  while(1){
+    printf("Edad: ");
+    scanf("%i", &animal -> edad);
+    if(animal -> edad >= 0){
+      break;
+    }
   }
 
   printf("Raza: ");
   scanf(" %[^\t\n]s", animal -> raza);
 
-  printf("Estatura: ");
-  scanf("%i", &animal -> estatura);
-  if(animal -> estatura < 0){
-    perror("Estatura no valida");
-    exit(-1);
+  while(1){
+    printf("Estatura: ");
+    scanf("%i", &animal -> estatura);
+    if(animal -> estatura > 0){
+      break;
+    }
   }
 
-  printf("Peso: ");
-  scanf("%f", &animal -> peso);
-  if(animal -> peso < 0){
-    perror("Peso no valido");
-    exit(-1);
+  while(1){
+    printf("Peso: ");
+    scanf("%f", &animal -> peso);
+    if(animal -> peso > 0){
+      break;
+    }
   }
 
-  printf("Sexo: ");
-  scanf(" %[^\t\n]c", &animal -> sexo);
-  if(animal -> sexo != 'h' && animal -> sexo != 'H' && animal -> sexo != 'm' && animal -> sexo != 'M'){
-    perror("Sexo no valido");
-    exit(-1);
+  while(1){
+    printf("Sexo: ");
+    scanf(" %[^\t\n]c", &animal -> sexo);
+    if(animal -> sexo == 'h' || animal -> sexo == 'H' || animal -> sexo == 'm' || animal -> sexo == 'M'){
+      break;
+    }
   }
+
 
   int current_position = ftell(current_file);
   int write_result = fwrite(animal, sizeof(struct dogType), 1, current_file);
@@ -344,6 +350,7 @@ void ver(){
 
   printf("Digite el numero del registro a revisar: ");
   scanf("%i", &search);
+
   search--;
   num = search;
 
@@ -379,7 +386,82 @@ void ver(){
 }
 
 void borrar(){
+  int search, num, c;
+  FILE *new_file;
+  char *pathname;
 
+  current_file = fopen("dataDogs.dat" , "r");
+  new_file = fopen("tempDogs.dat" , "a");
+
+  //recibir tamaño del archivo fuente
+  fseek(current_file, 0L, SEEK_END);
+  int sz = ftell(current_file);
+  rewind(current_file);
+
+  printf("\nEn el momento existen %d registros.\n", sz/sizeof(struct dogType));
+
+  printf("Digite el numero del registro a borrar: ");
+  scanf("%i", &search);
+
+  num = search;
+  search--;
+
+  search = search * sizeof(struct dogType);
+
+  printf("%i\n", search);
+
+  //leer todo lo que esta antes de la estructura
+  for(int i = 0; i < search; i++){
+    c = getc(current_file);
+    putc(c, new_file);
+  }
+
+  //ignorar la estructura
+  fseek(current_file, sizeof(struct dogType), SEEK_CUR);
+
+  //borrar historia medica asociada
+  pathname = malloc(100);
+  sprintf(pathname, "cd historias && rm %i.txt", num - 1 );
+  system(pathname);
+  free(pathname);
+
+  //renombrar todas las historias medicas para ser consistentes con la nueva tabla
+  int remaining_bytes = (sz - ftell(current_file))/sizeof(struct dogType);
+
+
+  for(int i = 0; i < remaining_bytes; i++){
+    pathname = malloc(100);
+    sprintf(pathname, "cd historias && mv %i.txt %i.txt", num, num-1 );
+    printf("%i\n", num);
+    printf("%s\n", pathname);
+    system(pathname);
+
+    free(pathname);
+    num += sizeof(struct dogType);
+  }
+
+  //leer todo lo que esta despues de la estructura
+  while(ftell(current_file) < sz){
+    c = getc(current_file);
+    putc(c, new_file);
+  }
+
+  fclose(new_file);
+  fclose(current_file);
+
+  //reemplazar el archivo viejo con el nuevo
+  system("rm dataDogs.dat && mv tempDogs.dat dataDogs.dat");
+
+  //rehacer tabla hash, dado que borrar une entrada en particular es complejo
+  ht = ht_create();
+  loadHash();
+
+  fclose(current_file);
+
+  printf("Hecho!\n");
+  printf("Presione cualquier tecla...");
+  getchar();
+  getchar();
 }
 
 void buscar(){
