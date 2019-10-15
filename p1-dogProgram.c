@@ -177,60 +177,6 @@ void ht_get(ht_t *hashtable, const char *key) {
     return;
 }
 
-void ht_del(ht_t *hashtable, const char *key) {
-    unsigned int bucket = hash(key);
-
-    // try to find a valid bucket
-    entry_t *entry = hashtable->entries[bucket];
-
-    // no bucket means no entry
-    if (entry == NULL) {
-        return;
-    }
-
-    entry_t *prev;
-    int idx = 0;
-
-    // walk through each entry until either the end is reached or a matching key is found
-    while (entry != NULL) {
-        // check key
-        if (strcmp(entry->key, key) == 0) {
-            // first item and no next entry
-            if (entry->next == NULL && idx == 0) {
-                hashtable->entries[bucket] = NULL;
-            }
-
-            // first item with a next entry
-            if (entry->next != NULL && idx == 0) {
-                hashtable->entries[bucket] = entry->next;
-            }
-
-            // last item
-            if (entry->next == NULL && idx != 0) {
-                prev->next = NULL;
-            }
-
-            // middle item
-            if (entry->next != NULL && idx != 0) {
-                prev->next = entry->next;
-            }
-
-            // free the deleted entry
-            free(entry->key);
-            //free(entry->value);
-            free(entry);
-
-            return;
-        }
-
-        // walk to next
-        prev = entry;
-        entry = prev->next;
-
-        ++idx;
-    }
-}
-
 void ht_dump(ht_t *hashtable) {
     for (int i = 0; i < HASH_SIZE; ++i) {
         entry_t *entry = hashtable->entries[i];
@@ -323,6 +269,7 @@ void ingresar(){
 
   fclose(current_file);
   free(animal);
+  free(pathname);
 
   ht_dump(ht);
 
@@ -345,11 +292,18 @@ void ver(){
   //rewind(current_file);
 
   fclose(current_file);
+  int pet_amount = sz/sizeof(struct dogType);
 
-  printf("\nEn el momento existen %d registros.\n", sz/sizeof(struct dogType));
+  printf("\nEn el momento existen %d registros.\n", pet_amount);
 
-  printf("Digite el numero del registro a revisar: ");
-  scanf("%i", &search);
+  while(1){
+    printf("Digite el numero del registro a revisar: ");
+    scanf("%i", &search);
+
+    if(search > 0 && search <= pet_amount){
+      break;
+    }
+  }
 
   search--;
   num = search;
@@ -426,15 +380,12 @@ void borrar(){
   //renombrar todas las historias medicas para ser consistentes con la nueva tabla
   int remaining_bytes = (sz - ftell(current_file))/sizeof(struct dogType);
 
-  printf("%i\n", remaining_bytes);
-
   for(int i = 0; i < remaining_bytes; i += sizeof(struct dogType)){
     pathname = malloc(100);
     sprintf(pathname, "cd historias && mv %i.txt %i.txt &> /dev/null", num, num-1 );
     system(pathname);
 
     free(pathname);
-    printf("\n%i\n", i);
     num++;
   }
 
@@ -469,6 +420,7 @@ void buscar(){
 
   ht_get(ht, search);
 
+  free(search);
   printf("Hecho!\n");
   printf("Presione cualquier tecla...");
   getchar();
@@ -492,7 +444,6 @@ void loadHash(){
     read_result = fread(read_key, 1, KEY_SIZE, current_file);
 
     if(read_result != KEY_SIZE){
-      printf("%i ",read_result);
       perror("La lectura de los registros fallo.\n");
       exit(-1);
     }
@@ -500,14 +451,11 @@ void loadHash(){
     fseek(current_file, sizeof(struct dogType)-KEY_SIZE, SEEK_CUR);
 
     ht_set(ht, read_key, read_position);
-
+    //free(read_key);
   }
 
   printf("Listo.\n");
 
-  //ht_dump(ht);
-
-  //fclose(current_file);
 }
 
 int main(){

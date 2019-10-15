@@ -124,7 +124,7 @@ void assignation(void){
     } else{
 
         fwrite(data, sizeof(struct dogType), 1, filePtr);
-        printf("Archivo creado y guardado \n");
+
         fclose(filePtr);
         free(data);
         return;
@@ -135,4 +135,6 @@ int main(){
    for(int i=0; i < RANGE; i++){
      assignation();
    }
+   printf("Archivo creado y guardado \n");
+   return 0;
 }
