@@ -199,6 +199,11 @@ int main(){
   bzero(hash_table, HASH_SIZE * sizeof(int));
   FILE *hash_file = fopen("hashRegisters.dat", "rb");
 
+  if(!hash_file){
+    perror("Por favor crear estructuras con generator");
+    exit(-1);
+  }
+
   //leer tabla hash
   fread(hash_table, sizeof(int), HASH_SIZE, hash_file);
   fclose(hash_file);
