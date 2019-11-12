@@ -2,74 +2,32 @@
 #include<stdio.h>
 #include<errno.h>
 #include<string.h>
+#include<ctype.h>
 
-#define HASH_SIZE 10069
-#define KEY_SIZE 33
+#define HASH_SIZE 1717
+#define NAME_SIZE 32
+#define TYPE_SIZE 32
+#define BREED_SIZE 16
 
 FILE *current_file;
-struct dogType *copyStruct();
 void ingresar();
 void ver();
 void borrar();
 void buscar();
-void loadHash();
+char *lower();
+
+int *hash_table;
 
 struct dogType{
-  char nombre[KEY_SIZE];
-  char tipo[KEY_SIZE];
+  char nombre[NAME_SIZE];
+  char tipo[TYPE_SIZE];
   int edad;
-  char raza[17];
+  char raza[BREED_SIZE];
   int estatura;
   float peso;
   char sexo;
+  int previous;
 };
-
-typedef struct entry_t {
-    char *key;
-    int value;
-    struct entry_t *next;
-} entry_t;
-
-typedef struct {
-    entry_t **entries;
-} ht_t;
-
-void getPatient(int position){
-
-  struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
-  current_file = fopen("dataDogs.dat", "r");
-
-  //recibir posición máxima
-  fseek(current_file, 0L, SEEK_END);
-  int eof = ftell(current_file);
-  rewind(current_file);
-
-  if(position >= eof){
-    perror("El registro no existe.\n");
-    printf("------------------------\n");
-    exit(-1);
-  }
-
-  fseek(current_file, position, SEEK_SET);
-
-  int read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
-
-  if(read_result != sizeof(struct dogType)){
-    perror("La lectura del registro fallo.\n");
-    exit(-1);
-  }
-
-  printf("Nombre: %s\n",    read_patient -> nombre);
-  printf("Tipo: %s\n",      read_patient -> tipo);
-  printf("Edad: %i\n",      read_patient -> edad);
-  printf("Raza: %s\n",      read_patient -> raza);
-  printf("Estatura: %i\n",  read_patient -> estatura);
-  printf("Peso: %f\n",      read_patient -> peso);
-  printf("Sexo: %c\n",      read_patient -> sexo);
-
-  free(read_patient);
-  fclose(current_file);
-}
 
 unsigned int hash(const char *key) {
     unsigned long int value = 0;
@@ -87,123 +45,47 @@ unsigned int hash(const char *key) {
     return value;
 }
 
-entry_t *ht_pair(const char *key, int value) {
-    // allocate the entry
-    entry_t *entry = malloc(sizeof(entry_t) * 1);
-    entry->key = malloc(strlen(key) + 1);
-    //entry->value = malloc(sizeof(int));
+void get_patient(int number){
 
-    // copy the key and value in place
-    strcpy(entry->key, key);
-    entry->value = value;
+  struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
+  current_file = fopen("dataDogs.dat", "r");
 
-    // next starts out null but may be set later on
-    entry->next = NULL;
+  //recibir posición máxima
+  fseek(current_file, 0L, SEEK_END);
+  int eof = ftell(current_file);
+  rewind(current_file);
 
-    return entry;
-}
-
-ht_t *ht_create(void) {
-    // allocate table
-    ht_t *hashtable = malloc(sizeof(ht_t) * 1);
-
-    // allocate table entries
-    hashtable->entries = malloc(sizeof(entry_t*) * HASH_SIZE);
-
-    // set each to null (needed for proper operation)
-    int i = 0;
-    for (; i < HASH_SIZE; ++i) {
-        hashtable->entries[i] = NULL;
-    }
-
-    return hashtable;
-}
-
-void ht_set(ht_t *hashtable, const char *key, int value) {
-    unsigned int slot = hash(key);
-
-    // try to look up an entry set
-    entry_t *entry = hashtable->entries[slot];
-
-    // no entry means slot empty, insert immediately
-    if (entry == NULL) {
-        hashtable->entries[slot] = ht_pair(key, value);
-        return;
-    }
-
-    entry_t *prev;
-
-    // walk through each entry until either the end is
-    // reached or a matching key is found
-    while (entry != NULL) {
-
-        // walk to next
-        prev = entry;
-        entry = prev->next;
-    }
-
-    // end of chain reached without a match, add new
-    prev->next = ht_pair(key, value);
-}
-
-void ht_get(ht_t *hashtable, const char *key) {
-    unsigned int slot = hash(key);
-    int count = 0;
-    // try to find a valid slot
-    entry_t *entry = hashtable->entries[slot];
-
-    // no slot means no entry
-    if (entry == NULL) {
-        printf("No existen registros con el nombre especificado.\n" );
-        return;
-    }
-
-    // walk through each entry in the slot, which could just be a single thing
-    while (entry != NULL) {
-        // print value if found
-        if (strcmp(entry->key, key) == 0) {
-            count++;
-
-            printf("-> ID: %i\n", (entry -> value/sizeof(struct dogType))+1);
-        }
-
-        // proceed to next key if available
-        entry = entry->next;
-    }
-
-    // print number of coincidences
-    printf("Encontradas %i coincidencias.\n", count);
+  if(number*sizeof(struct dogType) >= eof){
+    perror("El registro no existe.\n");
     printf("------------------------\n");
-    return;
+    exit(-1);
+  }
+
+  fseek(current_file, number * sizeof(struct dogType), SEEK_SET);
+
+  int read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
+
+  if(read_result != sizeof(struct dogType)){
+    printf("Se leyeron %i bytes.", read_result);
+    perror("La lectura del registro fallo.\n");
+    exit(-1);
+  }
+
+  printf("Nombre: %s\n",    read_patient -> nombre);
+  printf("Tipo: %s\n",      read_patient -> tipo);
+  printf("Edad: %i\n",      read_patient -> edad);
+  printf("Raza: %s\n",      read_patient -> raza);
+  printf("Estatura: %i\n",  read_patient -> estatura);
+  printf("Peso: %f\n",      read_patient -> peso);
+  printf("Sexo: %c\n",      read_patient -> sexo);
+
+  free(read_patient);
+  fclose(current_file);
+
 }
-
-void ht_dump(ht_t *hashtable) {
-    for (int i = 0; i < HASH_SIZE; ++i) {
-        entry_t *entry = hashtable->entries[i];
-
-        if (entry == NULL) {
-            continue;
-        }
-
-        printf("slot[%4d]: ", i);
-
-        for(;;) {
-            printf("%s=%i ", entry->key, entry->value);
-
-            if (entry->next == NULL) {
-                break;
-            }
-
-            entry = entry->next;
-        }
-
-        printf("\n");
-    }
-}
-
-ht_t *ht;
 
 void ingresar(){
+  system("clear");
   current_file = fopen("dataDogs.dat", "a");
   char *pathname = malloc(100);
   struct dogType *animal;
@@ -252,8 +134,15 @@ void ingresar(){
     }
   }
 
-
   int current_position = ftell(current_file);
+
+  int code = hash(animal -> nombre);
+
+  printf("En la tabla está %i", hash_table[code]);
+
+  animal -> previous = hash_table[code];
+  hash_table[code] = current_position/sizeof(struct dogType);
+
   int write_result = fwrite(animal, sizeof(struct dogType), 1, current_file);
 
   if(write_result != 1){
@@ -265,13 +154,14 @@ void ingresar(){
   sprintf(pathname, "cd historias && touch %i.txt", current_position/sizeof(struct dogType));
   system(pathname);
 
-  ht_set(ht, animal -> nombre, current_position);
+  //Escribir tabla hash
+  FILE *new_file = fopen("hashRegisters.dat", "wb");
+  fwrite(hash_table, sizeof(int), HASH_SIZE, new_file);
+  fclose(new_file);
 
   fclose(current_file);
   free(animal);
   free(pathname);
-
-  ht_dump(ht);
 
   printf("Presione cualquier tecla...");
   getchar();
@@ -281,17 +171,19 @@ void ingresar(){
 }
 
 void ver(){
+  system("clear");
   int search, num;
   char choice;
   char *pathname;
 
   current_file = fopen("dataDogs.dat" , "r");
+
   //recibir tamaño del archivo
   fseek(current_file, 0L, SEEK_END);
   int sz = ftell(current_file);
-  //rewind(current_file);
-
   fclose(current_file);
+
+
   int pet_amount = sz/sizeof(struct dogType);
 
   printf("\nEn el momento existen %d registros.\n", pet_amount);
@@ -309,7 +201,8 @@ void ver(){
   num = search;
 
   printf("-------Registro %i-------\n", num + 1);
-  getPatient(search * sizeof(struct dogType));
+
+  get_patient(search);
 
   while(1){
     printf("¿Abrir historia medica del paciente? S/N: ");
@@ -340,9 +233,10 @@ void ver(){
 }
 
 void borrar(){
-  int search, num, c;
+  int search, num, c, read_result;
   FILE *new_file;
   char *pathname;
+  struct dogType *animal = (struct dogType*)malloc(sizeof(struct dogType));
 
   current_file = fopen("dataDogs.dat" , "r");
   new_file = fopen("tempDogs.dat" , "w");
@@ -367,6 +261,19 @@ void borrar(){
     c = getc(current_file);
     putc(c, new_file);
   }
+
+  //fread la estructura
+  read_result = fread(animal, 1, sizeof(struct dogType), current_file);
+
+  printf("Borrando a %s\n", animal -> nombre);
+
+  if(read_result != sizeof(struct dogType)){
+    printf("Se leyeron %i bytes.", read_result);
+    perror("La lectura del registro fallo.\n");
+    exit(-1);
+  }
+
+  int code = hash(animal -> nombre);
 
   //ignorar la estructura
   fseek(current_file, sizeof(struct dogType), SEEK_CUR);
@@ -401,11 +308,19 @@ void borrar(){
   //reemplazar el archivo viejo con el nuevo
   system("rm dataDogs.dat && mv tempDogs.dat dataDogs.dat");
 
-  //rehacer tabla hash, dado que borrar une entrada en particular es complejo
-  ht = ht_create();
-  loadHash();
+  //rehacer tabla hash
+    //poner nuevo previous
+    hash_table[code] = animal -> previous;
 
-  fclose(current_file);
+    //Escribir tabla hash
+    FILE *hash_file = fopen("hashRegisters.dat", "wb");
+    fwrite(hash_table, sizeof(int), HASH_SIZE, hash_file);
+    fclose(hash_file);
+
+    printf("%i\n", hash_table[hash(animal -> nombre)]);
+
+  //fclose(current_file);
+  free(animal);
 
   printf("Hecho!\n");
   printf("Presione cualquier tecla...");
@@ -414,68 +329,75 @@ void borrar(){
 }
 
 void buscar(){
-  char *search = malloc(KEY_SIZE);
+
+  struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
+  char *search = malloc(NAME_SIZE);
+  int reg_pos, read_result;
+  int flag = 0;
+  int counter = 0;
+
+  current_file = fopen("dataDogs.dat" , "r");
   printf("Digite el nombre del paciente a buscar: ");
   scanf(" %[^\t\n]s", search);
 
-  ht_get(ht, search);
+  int code = hash(search);
+
+  fseek(current_file, hash_table[code]*sizeof(struct dogType), SEEK_SET);
+
+  while(flag != 2){
+    reg_pos = ftell(current_file);
+    read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
+
+    if(read_result != sizeof(struct dogType)){
+      printf("Se leyeron %i bytes.", read_result);
+      perror("La lectura del registro fallo.\n");
+      exit(-1);
+    }
+
+    if(strcmp(read_patient -> nombre, search) == 0){
+      printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
+      counter++;
+    }
+
+    if(read_patient -> previous == 0){
+      flag++;
+    }
+
+    rewind(current_file);
+    fseek(current_file, read_patient -> previous*sizeof(struct dogType), SEEK_SET);
+
+  }
 
   free(search);
   printf("Hecho!\n");
+  printf("Se encontraron %i registros.\n", counter);
   printf("Presione cualquier tecla...");
   getchar();
   getchar();
 }
 
-void loadHash(){
-  char *read_key = malloc(KEY_SIZE);
-  int read_result, read_position;
-  current_file = fopen("dataDogs.dat" , "r");
-
-  printf("\nCargando tabla hash...");
-
-  //recibir posición del final del archivo
-  fseek(current_file, 0L, SEEK_END);
-  long eof = ftell(current_file);
-  rewind(current_file);
-
-  while(ftell(current_file) < eof){
-    read_position = ftell(current_file);
-    read_result = fread(read_key, 1, KEY_SIZE, current_file);
-
-    if(read_result != KEY_SIZE){
-      perror("La lectura de los registros fallo.\n");
-      exit(-1);
-    }
-
-    fseek(current_file, sizeof(struct dogType)-KEY_SIZE, SEEK_CUR);
-
-    ht_set(ht, read_key, read_position);
-    //free(read_key);
+char *lower(char *str){
+  char *mystr = (char*)malloc(32);
+  for(int i = 0; str[i]; i++){
+    mystr[i] = tolower(str[i]);
   }
-
-  printf("Listo.\n");
-
+  return mystr;
 }
 
 int main(){
 
-  ht = ht_create();
+  hash_table = (int*)malloc(HASH_SIZE*sizeof(int));
+  bzero(hash_table, HASH_SIZE * sizeof(int));
+  FILE *hash_file = fopen("hashRegisters.dat", "rb");
 
-  current_file = fopen("dataDogs.dat", "ab+");
+  //leer tabla hash
+  fread(hash_table, sizeof(int), HASH_SIZE, hash_file);
+  fclose(hash_file);
 
-  //recibir posición del final del archivo
-  fseek(current_file, 0L, SEEK_END);
-  long eof = ftell(current_file);
-  rewind(current_file);
-
-  if(ftell(current_file) < eof){
-    loadHash();
-  }
-
-  fclose(current_file);
+  char *hey = (char*)malloc(10);
 
   while(1){
+    system("clear");
     printf("-------------------------\n");
     printf("Sistemas Operativos - Practica 1. Bienvenido.\n");
     printf("\n1. Ingresar paciente.\n");
@@ -489,7 +411,7 @@ int main(){
       case '2': ver();      break;
       case '3': borrar();   break;
       case '4': buscar();   break;
-      case '5': exit(0);
+      case '5': system("clear"); exit(0);
     }
   }
     return 0;
