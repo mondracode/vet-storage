@@ -8,7 +8,7 @@
 #define NAME_SIZE 32
 #define TYPE_SIZE 32
 #define BREED_SIZE 16
-#define RANGE 1000
+#define RANGE 10000000
 
 FILE *current_file;
 void ingresar();
@@ -144,6 +144,8 @@ void assignation(void){
     // Generar peso
     data->peso = ((float)rand()/(float)(RAND_MAX/60)) + 1;
 
+    //data->peso = (rand()%30)+1;
+
     // Generar sexo
     randomNumber = rand()%2;
     switch (randomNumber){
@@ -175,14 +177,14 @@ void assignation(void){
 
         data -> previous = hash_table[code];
         hash_table[code] = position;
-
-        printf("Nombre: %s\n", data -> nombre);
-        printf("Tipo: %s\n", data -> tipo);
-        printf("Raza: %s\n", data -> raza);
-        printf("Edad: %i\n", data -> edad);
-        printf("Peso: %f\n", data -> peso);
-        printf("Posición: %i\n", hash_table[code]);
-        printf("Posicion del anterior: %i\n", data -> previous);
+        //
+        // printf("Nombre: %s\n", data -> nombre);
+        // printf("Tipo: %s\n", data -> tipo);
+        // printf("Raza: %s\n", data -> raza);
+        // printf("Edad: %i\n", data -> edad);
+        // printf("Peso: %f\n", data -> peso);
+         //printf("Posición: %i\n", hash_table[code]);
+        // printf("Posicion del anterior: %i\n", data -> previous);
 
         fwrite(data, sizeof(struct dogType), 1, current_file);
         fclose(current_file);

@@ -3,6 +3,8 @@
 #include<errno.h>
 #include<string.h>
 #include<ctype.h>
+#include <strings.h>
+
 
 #define HASH_SIZE 1717
 #define NAME_SIZE 32
@@ -327,7 +329,7 @@ void borrar(){
 
 void buscar(){
 
-  struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
+  struct dogType *read_animal = (struct dogType*)malloc(sizeof(struct dogType));
   char *search = malloc(NAME_SIZE);
   int reg_pos, read_result;
   int flag = 0;
@@ -343,28 +345,27 @@ void buscar(){
 
   while(flag != 2){
     reg_pos = ftell(current_file);
-    read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
+    read_result = fread(read_animal, 1, sizeof(struct dogType), current_file);
 
     if(read_result != sizeof(struct dogType)){
       printf("Se leyeron %i bytes.", read_result);
       perror("La lectura del registro fallo.\n");
       exit(-1);
     }
-
-    if(strcmp(read_patient -> nombre, search) == 0){
+    if(strncasecmp(search, read_animal -> nombre, strlen(search)) == 0){
       printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
       counter++;
     }
 
-    if(read_patient -> previous == 0){
+    if(read_animal -> previous == 0){
       flag++;
     }
 
     rewind(current_file);
-    fseek(current_file, read_patient -> previous*sizeof(struct dogType), SEEK_SET);
+    fseek(current_file, read_animal -> previous*sizeof(struct dogType), SEEK_SET);
 
   }
-
+  free(read_animal);
   free(search);
   printf("Hecho!\n");
   printf("Se encontraron %i registros.\n", counter);
@@ -378,6 +379,7 @@ char *lower(char *str){
   for(int i = 0; str[i]; i++){
     mystr[i] = tolower(str[i]);
   }
+  mystr[strlen(mystr)] = 0;
   return mystr;
 }
 
