@@ -339,6 +339,8 @@ void buscar(){
   printf("Digite el nombre del paciente a buscar: ");
   scanf(" %[^\t\n]s", search);
 
+  search = lower(search);
+
   int code = hash(search);
 
   fseek(current_file, hash_table[code]*sizeof(struct dogType), SEEK_SET);
@@ -354,7 +356,7 @@ void buscar(){
     }
     //printf("%s %i %s\n", look, strcmp(look,found), found);
 
-    if(strcmp(look, found) == 0){
+    if(strcmp(search, read_animal -> nombre) == 0){
       printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
       counter++;
     }
