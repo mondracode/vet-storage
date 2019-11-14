@@ -352,7 +352,9 @@ void buscar(){
       perror("La lectura del registro fallo.\n");
       exit(-1);
     }
-    if(strncasecmp(search, read_animal -> nombre, strlen(search)) == 0){
+    //printf("%s %i %s\n", look, strcmp(look,found), found);
+
+    if(strcmp(look, found) == 0){
       printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
       counter++;
     }
@@ -379,7 +381,6 @@ char *lower(char *str){
   for(int i = 0; str[i]; i++){
     mystr[i] = tolower(str[i]);
   }
-  mystr[strlen(mystr)] = 0;
   return mystr;
 }
 
