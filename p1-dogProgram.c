@@ -339,6 +339,7 @@ void buscar(){
   printf("Digite el nombre del paciente a buscar: ");
   scanf(" %[^\t\n]s", search);
 
+  //conversion para buscar sin distinguir mayúsculas
   search = lower(search);
 
   int code = hash(search);
