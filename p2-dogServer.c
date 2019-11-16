@@ -1,22 +1,39 @@
-#include<stdlib.h>
-#include<stdio.h>
-#include<errno.h>
-#include<string.h>
-#include<ctype.h>
-#include <strings.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <ctype.h>
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include "myqueue.h"
 
+#define PORT 3535
+#define BACKLOG 32
+#define MAX_PROCESOS 1
 
 #define HASH_SIZE 1717
 #define NAME_SIZE 32
 #define TYPE_SIZE 32
 #define BREED_SIZE 16
 
+//thread pool
+pthread_t threads[BACKLOG];
+
 FILE *current_file;
+FILE *hash_file;
+FILE *log_file;
+
+void *thread_handler(void *arg);
 void ingresar();
 void ver();
 void borrar();
 void buscar();
 char *lower();
+
 
 int *hash_table;
 
@@ -387,11 +404,33 @@ char *lower(char *str){
   return mystr;
 }
 
+void *thread_handler(void *arg){
+  while(1){
+    //tomar un cliente de la cola
+    int *p_clientdesc = dequeue();
+    if(p_clientdesc != NULL){
+      //el cliente existe, entonces hay una concexión
+      //acá se llama a la función que gestione las conexiones
+    }
+  }
+}
+
 int main(){
 
+  int serverdesc, clientdesc,  check, l, s;
+  struct sockaddr_in server, client;
+  socklen_t len_addr = sizeof(struct sockaddr);
+  socklen_t len_addr_in = sizeof(struct sockaddr_in);
+
+  //inicialización de thread pool
+  for (int i = 0; i < BACKLOG; i++) {
+    pthread_create(&threads[i], NULL, thread_handler, NULL);
+  }
+
+  //cargar tabla hash
   hash_table = (int*)malloc(HASH_SIZE*sizeof(int));
   bzero(hash_table, HASH_SIZE * sizeof(int));
-  FILE *hash_file = fopen("hashRegisters.dat", "rb");
+  hash_file = fopen("hashRegisters.dat", "rb");
 
   if(!hash_file){
     perror("Por favor crear estructuras con generator");
@@ -402,25 +441,61 @@ int main(){
   fread(hash_table, sizeof(int), HASH_SIZE, hash_file);
   fclose(hash_file);
 
-  char *hey = (char*)malloc(10);
+  //abrir archivo de logs
+  log_file = fopen("serverDogs.dat", "a+");
+  if(!log_file){
+    log_file = fopen("serverDogs.dat", "w+");
+  }
+
+  //inicialización del socket
+  serverdesc = socket(AF_INET, SOCK_STREAM, 0);
+
+  if(serverdesc == -1){
+    perror("Error creando el socket");
+    exit(-1);
+  }
+
+  //inicialización de dirección
+  server.sin_family = AF_INET;
+  server.sin_port = htons(PORT);
+  server.sin_addr.s_addr = INADDR_ANY;
+  bzero((server.sin_zero), 8);
+
+  //asignación de dirección
+  check = bind(serverdesc, (struct sockaddr*)&server, len_addr_in);
+
+  if(check == -1){
+    perror("Error asignando dirección");
+    exit(-1);
+  }
+
+  check = listen(serverdesc, BACKLOG);
+  if(check == -1){
+    perror("Error en listen()");
+    exit(-1);
+  }
 
   while(1){
-    system("clear");
-    printf("-------------------------\n");
-    printf("Sistemas Operativos - Practica 1. Bienvenido.\n");
-    printf("\n1. Ingresar paciente.\n");
-    printf("2. Ver paciente por numero.\n");
-    printf("3. Borrar paciente.\n");
-    printf("4. Buscar paciente.\n");
-    printf("5. Salir.\n");
-    printf("Seleccione una opcion: ");
-    switch(getchar()){
-      case '1': ingresar(); break;
-      case '2': ver();      break;
-      case '3': borrar();   break;
-      case '4': buscar();   break;
-      case '5': system("clear"); exit(0);
+    printf("Esperando conexiones...");
+
+    //aceptar conexión
+    clientdesc = accept(serverdesc, (struct sockaddr*)&server, &len_addr_in);
+
+    if(clientdesc == -1){
+      perror("Fallo en el accept");
+      exit(-1);
     }
+
+    printf("Conexión entrante\n");
+
+    int *p_clientdesc = malloc(sizeof(int));
+    *p_clientdesc = clientdesc;
+
+    enqueue(p_clientdesc);
+
   }
-    return 0;
+
+  //menu
+
+  return 0;
 }
