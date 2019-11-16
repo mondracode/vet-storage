@@ -22,12 +22,15 @@
 
 //thread pool
 pthread_t threads[BACKLOG];
+//mutex
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 FILE *current_file;
 FILE *hash_file;
 FILE *log_file;
 
 void *thread_handler(void *arg);
+void *connection_handler(void *clientdesc);
 void ingresar();
 void ver();
 void borrar();
@@ -407,11 +410,33 @@ char *lower(char *str){
 void *thread_handler(void *arg){
   while(1){
     //tomar un cliente de la cola
+    pthread_mutex_lock(&mutex);
     int *p_clientdesc = dequeue();
+    pthread_mutex_unlock(&mutex);
+
     if(p_clientdesc != NULL){
-      //el cliente existe, entonces hay una concexión
-      //acá se llama a la función que gestione las conexiones
+      //el cliente existe, entonces hay una conexión
+      printf("Conexión establecida.");
+      //acá se llama a la función que gestiona las conexiones
+      connection_handler(p_clientdesc);
     }
+  }
+}
+
+void *connection_handler(void *p_client){
+  int clientdesc = *(int*)p_client;
+
+  int choice;
+  printf("Nunca había llegado tan lejos\n");
+
+  recv(clientdesc, &choice, sizeof(int), 0);
+
+  switch(choice){
+    case '1': /*ingresar();*/ printf("Escogieron ingresar\n"); break;
+    case '2': /*ver();*/      printf("Escogieron ver\n");break;
+    case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
+    case '4': /*buscar(); */  printf("Escogieron buscar\n");break;
+    case '5': system("clear"); exit(0);
   }
 }
 
@@ -476,7 +501,7 @@ int main(){
   }
 
   while(1){
-    printf("Esperando conexiones...");
+
 
     //aceptar conexión
     clientdesc = accept(serverdesc, (struct sockaddr*)&server, &len_addr_in);
@@ -486,13 +511,11 @@ int main(){
       exit(-1);
     }
 
-    printf("Conexión entrante\n");
-
     int *p_clientdesc = malloc(sizeof(int));
     *p_clientdesc = clientdesc;
-
+    pthread_mutex_lock(&mutex);
     enqueue(p_clientdesc);
-
+    pthread_mutex_unlock(&mutex);
   }
 
   //menu

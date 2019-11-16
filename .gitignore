@@ -13,7 +13,6 @@
 *.class
 *.dll
 *.exe
-*.o
 *.so
 
 # Packages #
