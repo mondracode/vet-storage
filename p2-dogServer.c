@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <time.h>
 #include "myqueue.h"
 
 #define PORT 3535
@@ -28,7 +29,6 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 FILE *current_file;
 FILE *hash_file;
-FILE *log_file;
 
 void *thread_handler(void *arg);
 void *connection_handler(void *clientdesc);
@@ -38,8 +38,13 @@ void borrar();
 void buscar(int clientdesc);
 char *lower();
 
- pid_t x;
+pid_t x;
 int *hash_table;
+time_t rawtime;
+struct tm * timeinfo;
+char buffer [80];
+char logg [100];
+struct sockaddr_in server, client;
 
 struct dogType{
   char nombre[NAME_SIZE];
@@ -73,7 +78,6 @@ struct dogType *get_patient(int number){
   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
   current_file = fopen("dataDogs.dat", "r");
 
-  printf("estoy lejos\n");
   //recibir posición máxima
   fseek(current_file, 0L, SEEK_END);
   int eof = ftell(current_file);
@@ -129,6 +133,26 @@ void ingresar(int clientdesc){
   fwrite(hash_table, sizeof(int), HASH_SIZE, new_file);
   fclose(new_file);
 
+  //abrir archivo de logs
+  FILE *log_file = fopen("serverDogs.dat", "a");
+  if(!log_file){
+    log_file = fopen("serverDogs.dat", "w+");
+  }
+
+  //hacer linea de log
+  strcat(logg, " inserción ");
+  strcat(logg, animal -> nombre);
+  strcat(logg, "\n");
+
+  //escribir log no binario
+  s = fputs(logg, new_file);
+
+  if(s <= 0){
+    perror("Error fwrite");
+    exit(-1);
+  }
+
+  fclose(new_file);
   fclose(current_file);
   free(animal);
   free(pathname);
@@ -136,6 +160,7 @@ void ingresar(int clientdesc){
 }
 
 void ver(int clientdesc){
+
   pthread_mutex_lock(&mutex);
   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
 
@@ -159,16 +184,12 @@ void ver(int clientdesc){
     perror("Error send");
     exit(-1);
   }
-  //
-  // printf("antes de recibir search\n");
-  //
+
   s = recv(clientdesc, &search, sizeof(int), 0);
   if(s < 0){
     perror("Error recv");
     exit(-1);
   }
-
-  printf("%i\n", search);
 
   read_patient = get_patient(search);
 
@@ -207,12 +228,37 @@ void ver(int clientdesc){
   // else if(choice == 'n' || choice == 'N'){
   //   printf("nel prro\n");
   // }
+  //abrir archivo de logs
+  FILE *new_file = fopen("serverDogs.dat", "a");
+  if(!new_file){
+    new_file = fopen("serverDogs.dat", "w+");
+  }
+
+  //convertir entero a string para escribir
+  char number[8];
+  sprintf(number, "%d", search + 1);
+
+  //hacer linea de log
+  strcat(logg, " lectura ");
+  strcat(logg, number);
+  strcat(logg, "\n");
+
+  //escribir log no binario
+  s = fputs(logg, new_file);
+
+  if(s <= 0){
+    perror("Error fwrite");
+    exit(-1);
+  }
+
+  fclose(new_file);
 
   pthread_mutex_unlock(&mutex);
   return;
 }
 
 void borrar(int clientdesc){
+
   pthread_mutex_lock(&mutex);
   int search, num, c, s, read_result, pet_amount;
   FILE *new_file;
@@ -300,23 +346,46 @@ void borrar(int clientdesc){
   system("rm dataDogs.dat && mv tempDogs.dat dataDogs.dat");
 
   //rehacer tabla hash
-    //poner nuevo previous
-    hash_table[code] = animal -> previous;
+  //poner nuevo previous
+  hash_table[code] = animal -> previous;
 
-    //Escribir tabla hash
-    FILE *hash_file = fopen("hashRegisters.dat", "wb");
-    fwrite(hash_table, sizeof(int), HASH_SIZE, hash_file);
-    fclose(hash_file);
+  //Escribir tabla hash
+  FILE *hash_file = fopen("hashRegisters.dat", "wb");
+  fwrite(hash_table, sizeof(int), HASH_SIZE, hash_file);
+  fclose(hash_file);
 
-    printf("%i\n", hash_table[hash(animal -> nombre)]);
+  //abrir archivo de logs
+  FILE *log_file = fopen("serverDogs.dat", "a");
+  if(!log_file){
+    log_file = fopen("serverDogs.dat", "w+");
+  }
 
-  //fclose(current_file);
+  //convertir entero a string para escribir
+  char number[8];
+  sprintf(number, "%d", num);
+
+  //hacer linea de log
+  strcat(logg, " borrado ");
+  strcat(logg, number);
+  strcat(logg, "\n");
+
+  //escribir log no binario
+  s = fputs(logg, log_file);
+
+  if(s <= 0){
+    perror("Error fwrite");
+    exit(-1);
+  }
+
+  fclose(log_file);
   free(animal);
   pthread_mutex_unlock(&mutex);
 }
 
 void buscar(int clientdesc){
   pthread_mutex_lock(&mutex);
+
+
   struct dogType *read_animal = (struct dogType*)malloc(sizeof(struct dogType));
 
   int reg_pos, read_result, id, s;
@@ -333,7 +402,8 @@ void buscar(int clientdesc){
     exit(-1);
   }
 
-  printf("Buscando a %s...",search);
+
+
   int code = hash(search);
 
   fseek(current_file, hash_table[code]*sizeof(struct dogType), SEEK_SET);
@@ -378,9 +448,28 @@ void buscar(int clientdesc){
     exit(-1);
   }
 
+  //abrir archivo de logs
+  FILE *new_file = fopen("serverDogs.dat", "a");
+  if(!new_file){
+    new_file = fopen("serverDogs.dat", "w+");
+  }
+
+  //hacer linea de log
+  strcat(logg, " búsqueda ");
+  strcat(logg, search);
+  strcat(logg, "\n");
+
+  //escribir log no binario
+  s = fputs(logg, new_file);
+  if(s <= 0){
+    perror("Error fwrite");
+    exit(-1);
+  }
+
+  fclose(new_file);
   free(read_animal);
   free(search);
-  printf("terminada la búsqueda\n");
+
   pthread_mutex_unlock(&mutex);
   return;
 }
@@ -402,6 +491,9 @@ void *thread_handler(void *arg){
 
     if(p_clientdesc != NULL){
       //el cliente existe, entonces hay una conexión
+      //toma el tiempo actual
+
+
 
       printf("Conexión establecida.\n");
       //acá se llama a la función que gestiona las conexiones
@@ -423,6 +515,19 @@ void *connection_handler(void *p_client){
       exit(-1);
     }
 
+    //limpiar log
+    strcpy(logg, "");
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(buffer,80,"%F %T ",timeinfo);
+
+    strcat(logg, buffer);
+    strcat(logg, "Cliente ");
+    strcat(logg, inet_ntoa(server.sin_addr));
+
+
+
     switch(choice){
       case '1': ingresar(clientdesc); break;
       case '2': ver(clientdesc);      break;
@@ -435,10 +540,13 @@ void *connection_handler(void *p_client){
 
 int main(){
 
+  char log[60];
   int serverdesc, clientdesc,  check, l, s;
-  struct sockaddr_in server, client;
+
   socklen_t len_addr = sizeof(struct sockaddr);
   socklen_t len_addr_in = sizeof(struct sockaddr_in);
+
+
 
   //cargar tabla hash
   hash_table = (int*)malloc(HASH_SIZE*sizeof(int));
@@ -453,12 +561,6 @@ int main(){
   //leer tabla hash
   fread(hash_table, sizeof(int), HASH_SIZE, hash_file);
   fclose(hash_file);
-
-  //abrir archivo de logs
-  log_file = fopen("serverDogs.dat", "a+");
-  if(!log_file){
-    log_file = fopen("serverDogs.dat", "w+");
-  }
 
   //inicialización de thread pool
   for (int i = 0; i < BACKLOG; i++) {
@@ -508,6 +610,10 @@ int main(){
       perror("Fallo en el accept");
       exit(-1);
     }
+
+
+    // printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
+    // printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
 
     int *p_clientdesc = malloc(sizeof(int));
     *p_clientdesc = clientdesc;
