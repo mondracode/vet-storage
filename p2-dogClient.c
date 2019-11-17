@@ -17,9 +17,9 @@
 #define TYPE_SIZE 32
 #define BREED_SIZE 16
 
-int choice;
+char choice;
 
-void ingresar();
+void ingresar(int clientdesc);
 void ver(int clientdesc);
 void borrar();
 void buscar(int clientdesc);
@@ -36,16 +36,78 @@ struct dogType{
   int previous;
 };
 
-void ingresar(){
+void ingresar(int clientdesc){
+
+  system("clear");
+  int s;
+  struct dogType *animal = (struct dogType*)malloc(sizeof(struct dogType));
+
+  printf("Digite la informacion del paciente a registrar: ");
+
+  printf("\nNombre: ");
+  scanf(" %[^\t\n]s", animal -> nombre);
+
+  strcpy(animal -> nombre, lower(animal -> nombre));
+
+  printf("Tipo: ");
+  scanf(" %[^\t\n]s", animal -> tipo);
+
+  while(1){
+    printf("Edad: ");
+    scanf("%i", &animal -> edad);
+    if(animal -> edad >= 0){
+      break;
+    }
+  }
+
+  printf("Raza: ");
+  scanf(" %[^\t\n]s", animal -> raza);
+
+  while(1){
+    printf("Estatura: ");
+    scanf("%i", &animal -> estatura);
+    if(animal -> estatura > 0){
+      break;
+    }
+  }
+
+  while(1){
+    printf("Peso: ");
+    scanf("%f", &animal -> peso);
+    if(animal -> peso > 0){
+      break;
+    }
+  }
+
+  while(1){
+    printf("Sexo: ");
+    scanf(" %[^\t\n]c", &animal -> sexo);
+    if(animal -> sexo == 'h' || animal -> sexo == 'H' || animal -> sexo == 'm' || animal -> sexo == 'M'){
+      break;
+    }
+  }
+
+  s = send(clientdesc, animal, sizeof(struct dogType), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
+
+
+  printf("Hecho!\n");
+  printf("Presione cualquier tecla...");
+  getchar();
+  getchar();
 }
 
 void ver(int clientdesc){
-  //system("clear");
-  int pet_amount = 0;
-  int s, search, num;
-  char *pathname;
-  struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
-
+  system("clear");
+   int pet_amount, num, s;
+   int search = 0;
+   char option, number[20];
+   char *pathname;
+   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
+  //
   s = recv(clientdesc, &pet_amount, sizeof(int), 0);
   if(s < 0){
     perror("Error recv");
@@ -54,81 +116,105 @@ void ver(int clientdesc){
 
   printf("\nEn el momento existen %d registros.\n", pet_amount);
 
-  while(1){
-    printf("Digite el numero del registro a revisar: ");
-    scanf("%i", &search);
+  do{
 
-    if(search > 0 && search <= pet_amount){
+    printf("Digite el numero del registro a revisar: ");
+    //si la entrada no se puede recibir
+    if(!fgets(number, 20, stdin)){
+      perror("error recibiendo entrada");
+      exit(-1);
+    }
+    //convertir linea a numero
+    search = atoi(number);
+    printf("\n");
+
+  }while(search == 0 || search <= 0 || search > pet_amount);
+
+  search--;
+  num = search;
+
+  s = send(clientdesc, &search, sizeof(int), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
+  //
+  s = recv(clientdesc, read_patient, sizeof(struct dogType), 0);
+  if(s < 0){
+    perror("Error recv");
+    exit(-1);
+  }
+
+  printf("-------Registro %i-------\n", num + 1);
+
+  printf("Nombre: %s\n",    read_patient -> nombre);
+  printf("Tipo: %s\n",      read_patient -> tipo);
+  printf("Edad: %i\n",      read_patient -> edad);
+  printf("Raza: %s\n",      read_patient -> raza);
+  printf("Estatura: %i\n",  read_patient -> estatura);
+  printf("Peso: %f\n",      read_patient -> peso);
+  printf("Sexo: %c\n",      read_patient -> sexo);
+
+  while(1){
+    printf("¿Abrir historia médica? S/N: ");
+    scanf(" %c", &option);
+
+    if(option == 's' || option == 'S' || option == 'n' || option == 'N'){
+      printf("Pues escogiste algo válido men %c\n", option);
       break;
     }
   }
 
-    search--;
-    num = search;
-
-    s = send(clientdesc, &search, sizeof(int), 0);
-    if(s < 0){
-      perror("Error send");
-      exit(-1);
-    }
-
-    s = recv(clientdesc, read_patient, sizeof(struct dogType), 0);
-    if(s < 0){
-      perror("Error recv");
-      exit(-1);
-    }
-
-    printf("-------Registro %i-------\n", num + 1);
-
-    printf("Nombre: %s\n",    read_patient -> nombre);
-    printf("Tipo: %s\n",      read_patient -> tipo);
-    printf("Edad: %i\n",      read_patient -> edad);
-    printf("Raza: %s\n",      read_patient -> raza);
-    printf("Estatura: %i\n",  read_patient -> estatura);
-    printf("Peso: %f\n",      read_patient -> peso);
-    printf("Sexo: %c\n",      read_patient -> sexo);
+  s = send(clientdesc, &option, sizeof(char), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
 
 
-    //historia
-    while(1){
-      printf("¿Abrir historia medica del paciente? S/N: ");
-      scanf(" %[^\t\n]c", &choice);
-
-      if(choice == 's' || choice == 'S'){
-
-        s = send(clientdesc, &choice, sizeof(char), 0);
-        if(s < 0){
-          perror("Error send");
-          exit(-1);
-        }
-
-        pathname = malloc(100);
-
-        //recibir historia
-        s = recv(clientdesc, pathname, 100, 0);
-        if(s < 0){
-          perror("Error recv");
-          exit(-1);
-        }
-        //abrir historia
-        system(pathname);
-        free(pathname);
-        break;
-      }
-      else if(choice == 'n' || choice == 'N'){
-        break;
-      }
-
-    }
-
-    printf("Hecho!\n");
-    printf("Presione cualquier tecla...");
-    getchar();
-    getchar();
+  //   //historia
+    // while(1){
+    //   printf("¿Abrir historia medica del paciente? S/N: ");
+    //   scanf("%i", &option);
+    //
+    //   printf("%i", &option);
+    //   if(option == 's' || option == 'S'){
+    //
+    //     s = send(clientdesc, &option, sizeof(int), 0);
+    //     if(s < 0){
+    //       perror("Error send");
+    //       exit(-1);
+    //     }
+    //     break;
+    //   //
+    //   //   pathname = malloc(100);
+    //   //
+    //   //   //recibir historia
+    //   //   s = recv(clientdesc, pathname, 100, 0);
+    //   //   if(s < 0){
+    //   //     perror("Error recv");
+    //   //     exit(-1);
+    //   //   }
+    //   //   //abrir historia
+    //   //   system(pathname);
+    //   //   free(pathname);
+    //   //   break;
+    //    }
+    //   else if(choice == 'n' || choice == 'N'){
+    //      break;
+    //   }
+    //
+    // }
+  //
+  printf("Hecho!\n");
+  printf("Presione cualquier tecla...");
+  getchar();
+  getchar();
 }
 
 void borrar(){
 }
+
 void buscar(int clientdesc){
 
   int id, counter= 0;
@@ -152,8 +238,12 @@ void buscar(int clientdesc){
         perror("Error recv");
         exit(-1);
       }
-      printf("ID: %i\t\t", id);
-      counter++;
+
+      if(id != -1){
+        printf("ID: %i\t\t", id);
+        counter++;
+      }
+
       if(counter % 3 == 0){
         printf("\n");
       }
@@ -161,7 +251,7 @@ void buscar(int clientdesc){
   free(search);
   printf("Hecho!\n");
 
-  printf("Se encontraron %i registros.\n", counter);
+  printf("Encontradas %i coincidencias.\n", counter);
   printf("Presione cualquier tecla...");
   getchar();
   getchar();
@@ -214,18 +304,19 @@ int main(){
     printf("Seleccione una opcion: ");
     choice = getchar();
 
-    s = send(clientdesc, &choice, sizeof(int), 0);
+    s = send(clientdesc, &choice, sizeof(char), 0);
     if(s < 0){
       perror("Error send");
       exit(-1);
     }
 
     switch(choice){
-      case '1': ingresar(); break;
-      case '2': ver(clientdesc);      break;
+      case '1': ingresar(clientdesc); break;
+      case '2': ver(clientdesc); break;
       case '3': borrar();   break;
       case '4': buscar(clientdesc);   break;
       case '5': system("clear"); exit(0);
+
     }
   }
 }

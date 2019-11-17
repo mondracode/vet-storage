@@ -73,6 +73,7 @@ struct dogType *get_patient(int number){
   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
   current_file = fopen("dataDogs.dat", "r");
 
+  printf("estoy lejos\n");
   //recibir posición máxima
   fseek(current_file, 0L, SEEK_END);
   int eof = ftell(current_file);
@@ -90,7 +91,7 @@ struct dogType *get_patient(int number){
 
   if(read_result != sizeof(struct dogType)){
     printf("Se leyeron %i bytes.", read_result);
-    perror("La lectura del registro fallo.\n");
+    perror("La lectura del registro fallo.get_patient\n");
     exit(-1);
   }
 
@@ -99,61 +100,22 @@ struct dogType *get_patient(int number){
   //free(read_patient);
 }
 
-void ingresar(){
-  system("clear");
+void ingresar(int clientdesc){
+  pthread_mutex_lock(&mutex);
+  int s;
   current_file = fopen("dataDogs.dat", "a");
   char *pathname = malloc(100);
-  struct dogType *animal;
-  animal = (struct dogType*)malloc(sizeof(struct dogType));
-
-  printf("Digite la informacion del paciente a registrar: ");
-
-  printf("\nNombre: ");
-  scanf(" %[^\t\n]s", animal -> nombre);
-
-  printf("Tipo: ");
-  scanf(" %[^\t\n]s", animal -> tipo);
-
-  while(1){
-    printf("Edad: ");
-    scanf("%i", &animal -> edad);
-    if(animal -> edad >= 0){
-      break;
-    }
-  }
-
-  printf("Raza: ");
-  scanf(" %[^\t\n]s", animal -> raza);
-
-  while(1){
-    printf("Estatura: ");
-    scanf("%i", &animal -> estatura);
-    if(animal -> estatura > 0){
-      break;
-    }
-  }
-
-  while(1){
-    printf("Peso: ");
-    scanf("%f", &animal -> peso);
-    if(animal -> peso > 0){
-      break;
-    }
-  }
-
-  while(1){
-    printf("Sexo: ");
-    scanf(" %[^\t\n]c", &animal -> sexo);
-    if(animal -> sexo == 'h' || animal -> sexo == 'H' || animal -> sexo == 'm' || animal -> sexo == 'M'){
-      break;
-    }
-  }
+  struct dogType *animal = (struct dogType*)malloc(sizeof(struct dogType));
 
   int current_position = ftell(current_file);
 
-  int code = hash(animal -> nombre);
+  s = recv(clientdesc, animal, sizeof(struct dogType), 0);
+  if(s < 0){
+    perror("Error recv");
+    exit(-1);
+  }
 
-  printf("En la tabla está %i", hash_table[code]);
+  int code = hash(animal -> nombre);
 
   animal -> previous = hash_table[code];
   hash_table[code] = current_position/sizeof(struct dogType);
@@ -166,7 +128,7 @@ void ingresar(){
   }
 
   //crear historia medica
-  sprintf(pathname, "cd historias && touch %i.txt", current_position/sizeof(struct dogType));
+  sprintf(pathname, "touch historias/%i.txt", current_position/sizeof(struct dogType));
   system(pathname);
 
   //Escribir tabla hash
@@ -177,12 +139,7 @@ void ingresar(){
   fclose(current_file);
   free(animal);
   free(pathname);
-
-  printf("Presione cualquier tecla...");
-  getchar();
-  getchar();
-  printf("Hecho!\n");
-  printf("--");
+  pthread_mutex_unlock(&mutex);
 }
 
 void ver(int clientdesc){
@@ -190,7 +147,7 @@ void ver(int clientdesc){
   struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
 
   int search, num, s;
-  char choice;
+  char option;
   char *pathname;
 
   current_file = fopen("dataDogs.dat" , "r");
@@ -202,45 +159,65 @@ void ver(int clientdesc){
 
   int pet_amount = sz/sizeof(struct dogType);
 
+  printf("Existen %i registros\n", pet_amount);
+
   s = send(clientdesc, &pet_amount, sizeof(int), 0);
   if(s < 0){
     perror("Error send");
     exit(-1);
   }
-
+  //
+  // printf("antes de recibir search\n");
+  //
   s = recv(clientdesc, &search, sizeof(int), 0);
   if(s < 0){
     perror("Error recv");
     exit(-1);
   }
 
-  read_patient = get_patient(search);
+  printf("%i\n", search);
 
+  read_patient = get_patient(search);
+  //
+  // printf("dijeron que %s\n", read_patient -> nombre);
+  //
   s = send(clientdesc, read_patient, sizeof(struct dogType), 0);
   if(s < 0){
     perror("Error send");
     exit(-1);
   }
 
-  s = recv(clientdesc, &choice, sizeof(char), 0);
+  s = recv(clientdesc, &option, sizeof(char), 0);
   if(s < 0){
     perror("Error recv");
     exit(-1);
   }
 
-  if(choice == 's' || choice == 'S'){
-    pathname = malloc(100);
-    //abrir historia
-    sprintf(pathname, "nano historias/%i.txt", search);
-
-    s = send(clientdesc, pathname, 100, 0);
-    if(s < 0){
-      perror("Error send");
-      exit(-1);
-    }
-    free(pathname);
+  if(option == 's' || option == 'S'){
+    printf("Se solicitó abrir la historia médica %c\n", option);
   }
+
+  if(option == 'n' || option == 'N'){
+    printf("Consulta concluida\n");
+  }
+
+  // if(choice == 's' || choice == 'S'){
+  //   pathname = malloc(100);
+  //   //abrir historia
+  //   sprintf(pathname, "nano historias/%i.txt", search);
+  //
+  //   s = send(clientdesc, pathname, 100, 0);
+  //   if(s < 0){
+  //     perror("Error send");
+  //     exit(-1);
+  //   }
+  //   free(pathname);
+  // }
+  // else if(choice == 'n' || choice == 'N'){
+  //   printf("nel prro\n");
+  // }
   pthread_mutex_unlock(&mutex);
+  return;
 }
 
 void borrar(){
@@ -280,7 +257,7 @@ void borrar(){
 
   if(read_result != sizeof(struct dogType)){
     printf("Se leyeron %i bytes.", read_result);
-    perror("La lectura del registro fallo.\n");
+    perror("La lectura del registro fallo. borrar\n");
     exit(-1);
   }
 
@@ -365,7 +342,7 @@ void buscar(int clientdesc){
 
     if(read_result != sizeof(struct dogType)){
       printf("Se leyeron %i bytes.", read_result);
-      perror("La lectura del registro fallo.\n");
+      perror("La lectura del registro fallo. buscar\n");
       exit(-1);
     }
     //debug
@@ -435,18 +412,18 @@ void *connection_handler(void *p_client){
   int clientdesc = *(int*)p_client;
   int s;
 
-  int choice;
+  char choice;
 
   while(1){
-    s = recv(clientdesc, &choice, sizeof(int), 0);
+    s = recv(clientdesc, &choice, sizeof(char), 0);
     if(s < 0){
       perror("Error recv");
       exit(-1);
     }
 
     switch(choice){
-      case '1': /*ingresar();*/ printf("Escogieron ingresar %i\n"); break;
-      case '2': ver(clientdesc);              break;
+      case '1': ingresar(clientdesc); break;
+      case '2': ver(clientdesc);      break;
       case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
       case '4': buscar(clientdesc); break;
       case '5': return NULL;
