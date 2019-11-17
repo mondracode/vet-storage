@@ -6,6 +6,7 @@
 #include <semaphore.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
@@ -34,10 +35,10 @@ void *connection_handler(void *clientdesc);
 void ingresar();
 void ver();
 void borrar();
-void buscar();
+void buscar(int clientdesc);
 char *lower();
 
-
+ pid_t x;
 int *hash_table;
 
 struct dogType{
@@ -347,26 +348,35 @@ void borrar(){
   getchar();
 }
 
-void buscar(){
-
+void buscar(int clientdesc){
+  printf("why u here lol\n");
   struct dogType *read_animal = (struct dogType*)malloc(sizeof(struct dogType));
-  char *search = malloc(NAME_SIZE);
-  int reg_pos, read_result;
+
+  int reg_pos, read_result, id, s;
   int flag = 0;
   int counter = 0;
+  char *search = malloc(NAME_SIZE);
+  x = syscall(__NR_gettid);
+  //tid = pthread_getthreadid_np();
 
   current_file = fopen("dataDogs.dat" , "r");
-  printf("Digite el nombre del paciente a buscar: ");
-  scanf(" %[^\t\n]s", search);
+  //printf("getpthread_self: %lu tid:%lu\n",pthread_self(), syscall(SYS_gettid));
+  printf("Búsqueda iniciada. %i", (int)x);
+  pthread_mutex_lock(&mutex);
 
-  //conversion para buscar sin distinguir mayúsculas
-  search = lower(search);
+  s = recv(clientdesc, search, NAME_SIZE, 0);
+  if(s < 1){
+    perror("Error recv en buscar");
+    exit(-1);
+  }
 
+
+  printf("Buscando a %s...",search);
   int code = hash(search);
 
   fseek(current_file, hash_table[code]*sizeof(struct dogType), SEEK_SET);
 
-  while(flag != 2){
+  while(flag < 2){
     reg_pos = ftell(current_file);
     read_result = fread(read_animal, 1, sizeof(struct dogType), current_file);
 
@@ -375,10 +385,17 @@ void buscar(){
       perror("La lectura del registro fallo.\n");
       exit(-1);
     }
-    //printf("%s %i %s\n", look, strcmp(look,found), found);
+    //debug
+    //printf("%s %i %s\n", search, strcmp(search, read_animal -> nombre), read_animal -> nombre);
 
     if(strcmp(search, read_animal -> nombre) == 0){
-      printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
+      id = (reg_pos/sizeof(struct dogType))+1; //conversión de dirección de archivo a número de registro
+      s = send(clientdesc, &id, sizeof(int), 0);
+      if(s < 0){
+        perror("Error send");
+        exit(-1);
+      }
+      //printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
       counter++;
     }
 
@@ -390,13 +407,20 @@ void buscar(){
     fseek(current_file, read_animal -> previous*sizeof(struct dogType), SEEK_SET);
 
   }
+
+  id = -1;
+
+  s = send(clientdesc, &id, sizeof(int), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
+  pthread_mutex_unlock(&mutex);
   free(read_animal);
   free(search);
-  printf("Hecho!\n");
-  printf("Se encontraron %i registros.\n", counter);
-  printf("Presione cualquier tecla...");
-  getchar();
-  getchar();
+  printf("terminada la búsqueda\n");
+  //log here
+  return;
 }
 
 char *lower(char *str){
@@ -416,7 +440,8 @@ void *thread_handler(void *arg){
 
     if(p_clientdesc != NULL){
       //el cliente existe, entonces hay una conexión
-      printf("Conexión establecida.");
+
+      printf("Conexión establecida.\n");
       //acá se llama a la función que gestiona las conexiones
       connection_handler(p_clientdesc);
     }
@@ -425,18 +450,24 @@ void *thread_handler(void *arg){
 
 void *connection_handler(void *p_client){
   int clientdesc = *(int*)p_client;
+  int s;
 
   int choice;
-  printf("Nunca había llegado tan lejos\n");
 
-  recv(clientdesc, &choice, sizeof(int), 0);
+  while(1){
+    s = recv(clientdesc, &choice, sizeof(int), 0);
+    if(s < 0){
+      perror("Error recv");
+      exit(-1);
+    }
 
-  switch(choice){
-    case '1': /*ingresar();*/ printf("Escogieron ingresar\n"); break;
-    case '2': /*ver();*/      printf("Escogieron ver\n");break;
-    case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
-    case '4': /*buscar(); */  printf("Escogieron buscar\n");break;
-    case '5': system("clear"); exit(0);
+    switch(choice){
+      case '1': /*ingresar();*/ printf("Escogieron ingresar %i\n"); break;
+      case '2': /*ver();*/      printf("Escogieron ver\n");break;
+      case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
+      case '4': buscar(clientdesc); break;
+      case '5': system("clear"); return NULL;
+    }
   }
 }
 
@@ -446,11 +477,6 @@ int main(){
   struct sockaddr_in server, client;
   socklen_t len_addr = sizeof(struct sockaddr);
   socklen_t len_addr_in = sizeof(struct sockaddr_in);
-
-  //inicialización de thread pool
-  for (int i = 0; i < BACKLOG; i++) {
-    pthread_create(&threads[i], NULL, thread_handler, NULL);
-  }
 
   //cargar tabla hash
   hash_table = (int*)malloc(HASH_SIZE*sizeof(int));
@@ -472,6 +498,11 @@ int main(){
     log_file = fopen("serverDogs.dat", "w+");
   }
 
+  //inicialización de thread pool
+  for (int i = 0; i < BACKLOG; i++) {
+    pthread_create(&threads[i], NULL, thread_handler, NULL);
+  }
+
   //inicialización del socket
   serverdesc = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -485,6 +516,11 @@ int main(){
   server.sin_port = htons(PORT);
   server.sin_addr.s_addr = INADDR_ANY;
   bzero((server.sin_zero), 8);
+
+  if(setsockopt(serverdesc, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0){
+    perror("setsockopt(SO_REUSEADDR) failed");
+    exit(-1);
+  }
 
   //asignación de dirección
   check = bind(serverdesc, (struct sockaddr*)&server, len_addr_in);
