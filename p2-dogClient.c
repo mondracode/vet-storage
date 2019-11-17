@@ -126,7 +126,6 @@ void ver(int clientdesc){
     }
     //convertir linea a numero
     search = atoi(number);
-    printf("\n");
 
   }while(search == 0 || search <= 0 || search > pet_amount);
 
@@ -160,7 +159,6 @@ void ver(int clientdesc){
     scanf(" %c", &option);
 
     if(option == 's' || option == 'S' || option == 'n' || option == 'N'){
-      printf("Pues escogiste algo válido men %c\n", option);
       break;
     }
   }
@@ -212,7 +210,50 @@ void ver(int clientdesc){
   getchar();
 }
 
-void borrar(){
+void borrar(int clientdesc){
+
+  int s, pet_amount, search, num;
+  char number[20], petname[NAME_SIZE];
+
+  s = recv(clientdesc, &pet_amount, sizeof(int), 0);
+  if(s < 0){
+    perror("Error recv");
+    exit(-1);
+  }
+
+  printf("\nEn el momento existen %d registros.\n", pet_amount);
+
+  do{
+
+    printf("Digite el numero del registro a borrar: ");
+    //si la entrada no se puede recibir
+    if(!fgets(number, 20, stdin)){
+      perror("error recibiendo entrada");
+      exit(-1);
+    }
+    //convertir linea a numero
+    search = atoi(number);
+    printf("\n");
+
+  }while(search <= 0 || search > pet_amount);
+
+  s = send(clientdesc, &search, sizeof(int), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
+
+  s = recv(clientdesc, petname, NAME_SIZE, 0);
+  if(s < 0){
+    perror("Error recv");
+    exit(-1);
+  }
+
+  printf("Borrando a %s...\n", petname);
+
+  printf("Hecho!\n");
+  printf("Presione cualquier tecla...");
+  getchar();
 }
 
 void buscar(int clientdesc){
@@ -313,7 +354,7 @@ int main(){
     switch(choice){
       case '1': ingresar(clientdesc); break;
       case '2': ver(clientdesc); break;
-      case '3': borrar();   break;
+      case '3': borrar(clientdesc);   break;
       case '4': buscar(clientdesc);   break;
       case '5': system("clear"); exit(0);
 

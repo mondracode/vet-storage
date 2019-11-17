@@ -79,12 +79,6 @@ struct dogType *get_patient(int number){
   int eof = ftell(current_file);
   rewind(current_file);
 
-  // if(number*sizeof(struct dogType) >= eof){
-  //   perror("El registro no existe.\n");
-  //   printf("------------------------\n");
-  //   exit(-1);
-  // }
-
   fseek(current_file, number * sizeof(struct dogType), SEEK_SET);
 
   int read_result = fread(read_patient, 1, sizeof(struct dogType), current_file);
@@ -97,7 +91,6 @@ struct dogType *get_patient(int number){
 
   fclose(current_file);
   return read_patient;
-  //free(read_patient);
 }
 
 void ingresar(int clientdesc){
@@ -178,9 +171,7 @@ void ver(int clientdesc){
   printf("%i\n", search);
 
   read_patient = get_patient(search);
-  //
-  // printf("dijeron que %s\n", read_patient -> nombre);
-  //
+
   s = send(clientdesc, read_patient, sizeof(struct dogType), 0);
   if(s < 0){
     perror("Error send");
@@ -216,28 +207,39 @@ void ver(int clientdesc){
   // else if(choice == 'n' || choice == 'N'){
   //   printf("nel prro\n");
   // }
+
   pthread_mutex_unlock(&mutex);
   return;
 }
 
-void borrar(){
-  int search, num, c, read_result;
+void borrar(int clientdesc){
+  pthread_mutex_lock(&mutex);
+  int search, num, c, s, read_result, pet_amount;
   FILE *new_file;
   char *pathname;
   struct dogType *animal = (struct dogType*)malloc(sizeof(struct dogType));
 
-  current_file = fopen("dataDogs.dat" , "r");
-  new_file = fopen("tempDogs.dat" , "w");
+  current_file = fopen("dataDogs.dat" , "r"); //archivo actual
+  new_file = fopen("tempDogs.dat" , "w"); //archivo nuevo
 
   //recibir tamaño del archivo fuente
   fseek(current_file, 0L, SEEK_END);
   int sz = ftell(current_file);
   rewind(current_file);
 
-  printf("\nEn el momento existen %d registros.\n", sz/sizeof(struct dogType));
+  pet_amount = sz/sizeof(struct dogType);
 
-  printf("Digite el numero del registro a borrar: ");
-  scanf("%i", &search);
+  s = send(clientdesc, &pet_amount, sizeof(int), 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
+
+  s = recv(clientdesc, &search, sizeof(int), 0);
+  if(s < 0){
+    perror("Error recv");
+    exit(-1);
+  }
 
   num = search;
   search--;
@@ -253,7 +255,11 @@ void borrar(){
   //fread la estructura
   read_result = fread(animal, 1, sizeof(struct dogType), current_file);
 
-  printf("Borrando a %s\n", animal -> nombre);
+  s = send(clientdesc, animal -> nombre, NAME_SIZE, 0);
+  if(s < 0){
+    perror("Error send");
+    exit(-1);
+  }
 
   if(read_result != sizeof(struct dogType)){
     printf("Se leyeron %i bytes.", read_result);
@@ -306,11 +312,7 @@ void borrar(){
 
   //fclose(current_file);
   free(animal);
-
-  printf("Hecho!\n");
-  printf("Presione cualquier tecla...");
-  getchar();
-  getchar();
+  pthread_mutex_unlock(&mutex);
 }
 
 void buscar(int clientdesc){
@@ -424,8 +426,8 @@ void *connection_handler(void *p_client){
     switch(choice){
       case '1': ingresar(clientdesc); break;
       case '2': ver(clientdesc);      break;
-      case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
-      case '4': buscar(clientdesc); break;
+      case '3': borrar(clientdesc);   break;
+      case '4': buscar(clientdesc);   break;
       case '5': return NULL;
     }
   }
