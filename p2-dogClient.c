@@ -44,14 +44,11 @@ void buscar(int clientdesc){
   //conversion para buscar sin distinguir mayúsculas
   search = lower(search);
 
-
-  printf("bloqueante?\n");
   s = send(clientdesc, search, NAME_SIZE, 0);
   if(s < 0){
     perror("Error send");
     exit(-1);
   }
-  printf("yep\n");
 
   while(id != -1){
       s = recv(clientdesc, &id, sizeof(int), 0);
@@ -65,7 +62,6 @@ void buscar(int clientdesc){
         printf("\n");
       }
   }
-  printf("se envio %s...\n", search);
   free(search);
   printf("Hecho!\n");
 

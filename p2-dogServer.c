@@ -349,27 +349,22 @@ void borrar(){
 }
 
 void buscar(int clientdesc){
-  printf("why u here lol\n");
+  pthread_mutex_lock(&mutex);
   struct dogType *read_animal = (struct dogType*)malloc(sizeof(struct dogType));
 
   int reg_pos, read_result, id, s;
   int flag = 0;
   int counter = 0;
   char *search = malloc(NAME_SIZE);
-  x = syscall(__NR_gettid);
-  //tid = pthread_getthreadid_np();
 
   current_file = fopen("dataDogs.dat" , "r");
-  //printf("getpthread_self: %lu tid:%lu\n",pthread_self(), syscall(SYS_gettid));
-  printf("Búsqueda iniciada. %i", (int)x);
-  pthread_mutex_lock(&mutex);
+
 
   s = recv(clientdesc, search, NAME_SIZE, 0);
   if(s < 1){
     perror("Error recv en buscar");
     exit(-1);
   }
-
 
   printf("Buscando a %s...",search);
   int code = hash(search);
@@ -415,11 +410,11 @@ void buscar(int clientdesc){
     perror("Error send");
     exit(-1);
   }
-  pthread_mutex_unlock(&mutex);
+
   free(read_animal);
   free(search);
   printf("terminada la búsqueda\n");
-  //log here
+  pthread_mutex_unlock(&mutex);
   return;
 }
 
@@ -466,7 +461,7 @@ void *connection_handler(void *p_client){
       case '2': /*ver();*/      printf("Escogieron ver\n");break;
       case '3': /*borrar();*/   printf("Escogieron borrar\n");break;
       case '4': buscar(clientdesc); break;
-      case '5': system("clear"); return NULL;
+      case '5': return NULL;
     }
   }
 }
