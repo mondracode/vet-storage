@@ -102,10 +102,10 @@ void ingresar(int clientdesc){
 
 void ver(int clientdesc){
   system("clear");
-   int pet_amount, num, s;
+   int pet_amount, num, s, sz;
    int search = 0;
    char option, number[20];
-   char *pathname;
+   char *pathname, *historia_contents;
    struct dogType *read_patient = (struct dogType*)malloc(sizeof(struct dogType));
   //
   s = recv(clientdesc, &pet_amount, sizeof(int), 0);
@@ -161,6 +161,7 @@ void ver(int clientdesc){
     if(option == 's' || option == 'S' || option == 'n' || option == 'N'){
       break;
     }
+
   }
 
   s = send(clientdesc, &option, sizeof(char), 0);
@@ -169,41 +170,68 @@ void ver(int clientdesc){
     exit(-1);
   }
 
+  //si se quiere ver la historia médica
+  if(option == 's' || option == 'S'){
 
-  //   //historia
-    // while(1){
-    //   printf("¿Abrir historia medica del paciente? S/N: ");
-    //   scanf("%i", &option);
-    //
-    //   printf("%i", &option);
-    //   if(option == 's' || option == 'S'){
-    //
-    //     s = send(clientdesc, &option, sizeof(int), 0);
-    //     if(s < 0){
-    //       perror("Error send");
-    //       exit(-1);
-    //     }
-    //     break;
-    //   //
-    //   //   pathname = malloc(100);
-    //   //
-    //   //   //recibir historia
-    //   //   s = recv(clientdesc, pathname, 100, 0);
-    //   //   if(s < 0){
-    //   //     perror("Error recv");
-    //   //     exit(-1);
-    //   //   }
-    //   //   //abrir historia
-    //   //   system(pathname);
-    //   //   free(pathname);
-    //   //   break;
-    //    }
-    //   else if(choice == 'n' || choice == 'N'){
-    //      break;
-    //   }
-    //
-    // }
-  //
+    //recibir tamaño de archivo
+    s = recv(clientdesc, &sz, sizeof(int), 0);
+    if(s < 0){
+      perror("Error recv");
+      exit(-1);
+    }
+
+    if(sz != 0){
+      FILE *historia_file = fopen("temp.dat","w+");
+      historia_contents = (char*)malloc(sz);
+
+      //recibir contenidos de la historia
+      s = recv(clientdesc, historia_contents, sz, 0);
+      if(s < 0){
+        perror("Error recv");
+        exit(-1);
+      }
+
+      fputs(historia_contents, historia_file);
+
+      fclose(historia_file);
+    }
+
+    system("touch temp.dat && nano temp.dat");
+
+    FILE *historia_file = fopen("temp.dat","r");
+    if(!historia_file){
+
+      perror("??????\n");
+      exit(-1);
+    }
+
+    //recibir tamaño del archivo
+    fseek(historia_file, 0L, SEEK_END);
+    sz = ftell(historia_file);
+    rewind(historia_file);
+
+    //enviar nuevo tamaño
+    s = send(clientdesc, &sz, sizeof(int), 0);
+    if(s < 0){
+      perror("Error send");
+      exit(-1);
+    }
+
+    if(sz > 1){
+      //leer datos del nuevo archivo
+      fgets(historia_contents, sz+1, historia_file);
+
+      s = send(clientdesc, historia_contents, sz, 0);
+      if(s < 0){
+        perror("Error send");
+        exit(-1);
+      }
+
+      system("rm temp.dat");
+    }
+
+  }
+
   printf("Hecho!\n");
   printf("Presione cualquier tecla...");
   getchar();
@@ -281,12 +309,8 @@ void buscar(int clientdesc){
       }
 
       if(id != -1){
-        printf("ID: %i\t\t", id);
+        printf("ID: %i\n", id);
         counter++;
-      }
-
-      if(counter % 3 == 0){
-        printf("\n");
       }
   }
   free(search);
@@ -327,7 +351,7 @@ int main(){
 
   //intentar conectarse hasta que se pueda
   do{
-    //printf("Intentando conectar...");
+
     r = connect(clientdesc, (struct sockaddr*)&client, len_addr_in);
   }while(r != 0);
 

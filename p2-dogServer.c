@@ -166,7 +166,8 @@ void ver(int clientdesc){
 
   int search, num, s;
   char option;
-  char *pathname;
+  char *pathname, *historia_contents;
+  FILE *historia;
 
   current_file = fopen("dataDogs.dat" , "r");
 
@@ -176,8 +177,6 @@ void ver(int clientdesc){
   fclose(current_file);
 
   int pet_amount = sz/sizeof(struct dogType);
-
-  printf("Existen %i registros\n", pet_amount);
 
   s = send(clientdesc, &pet_amount, sizeof(int), 0);
   if(s < 0){
@@ -206,28 +205,78 @@ void ver(int clientdesc){
   }
 
   if(option == 's' || option == 'S'){
-    printf("Se solicitó abrir la historia médica %c\n", option);
+    pathname = malloc(100);
+
+    sprintf(pathname, "historias/%i.txt", search);
+
+    historia = fopen(pathname, "r+");
+    if(!historia){
+      historia = fopen(pathname, "w+");
+    }
+
+    //recibir tamaño del archivo
+    fseek(historia, 0L, SEEK_END);
+    int sz = ftell(historia);
+    rewind(historia);
+
+    s = send(clientdesc, &sz, sizeof(int), 0);
+
+    if(s < 0){
+      perror("Error send");
+      exit(-1);
+    }
+
+
+    //enviar archivo
+    if(sz != 0){
+      //sz++;
+      historia_contents = (char*)malloc(sz);
+      fgets(historia_contents, sz+1, historia);
+
+      s = send(clientdesc, historia_contents, sz, 0);
+      if(s < 0){
+        perror("Error send");
+        exit(-1);
+      }
+    }
+
+    int oldsz = sz;
+
+    s = recv(clientdesc, &sz, sizeof(int), 0);
+    if(s < 0){
+      perror("Error recv");
+      exit(-1);
+    }
+
+    if(sz == 0 || sz == 1){
+      fclose(historia);
+      historia = fopen(pathname, "w+");
+    }
+
+    if(sz > 1 ){
+      historia_contents = (char*)malloc(sz);
+
+      s = recv(clientdesc, historia_contents, sz, 0);
+      if(s < 0){
+        perror("Error recv");
+        exit(-1);
+      }
+
+      fclose(historia);
+
+      historia = fopen(pathname, "w+");
+      fputs(historia_contents, historia);
+
+      free(historia_contents);
+    }
+
+    fclose(historia);
+    free(pathname);
+
   }
 
-  if(option == 'n' || option == 'N'){
-    printf("Consulta concluida\n");
-  }
+  historia = fopen(pathname, "w+");
 
-  // if(choice == 's' || choice == 'S'){
-  //   pathname = malloc(100);
-  //   //abrir historia
-  //   sprintf(pathname, "nano historias/%i.txt", search);
-  //
-  //   s = send(clientdesc, pathname, 100, 0);
-  //   if(s < 0){
-  //     perror("Error send");
-  //     exit(-1);
-  //   }
-  //   free(pathname);
-  // }
-  // else if(choice == 'n' || choice == 'N'){
-  //   printf("nel prro\n");
-  // }
   //abrir archivo de logs
   FILE *new_file = fopen("serverDogs.dat", "a");
   if(!new_file){
@@ -385,7 +434,6 @@ void borrar(int clientdesc){
 void buscar(int clientdesc){
   pthread_mutex_lock(&mutex);
 
-
   struct dogType *read_animal = (struct dogType*)malloc(sizeof(struct dogType));
 
   int reg_pos, read_result, id, s;
@@ -395,14 +443,11 @@ void buscar(int clientdesc){
 
   current_file = fopen("dataDogs.dat" , "r");
 
-
   s = recv(clientdesc, search, NAME_SIZE, 0);
   if(s < 1){
     perror("Error recv en buscar");
     exit(-1);
   }
-
-
 
   int code = hash(search);
 
@@ -417,8 +462,6 @@ void buscar(int clientdesc){
       perror("La lectura del registro fallo. buscar\n");
       exit(-1);
     }
-    //debug
-    //printf("%s %i %s\n", search, strcmp(search, read_animal -> nombre), read_animal -> nombre);
 
     if(strcmp(search, read_animal -> nombre) == 0){
       id = (reg_pos/sizeof(struct dogType))+1; //conversión de dirección de archivo a número de registro
@@ -427,7 +470,7 @@ void buscar(int clientdesc){
         perror("Error send");
         exit(-1);
       }
-      //printf("ID: %i\n", (reg_pos/sizeof(struct dogType))+1);
+
       counter++;
     }
 
@@ -490,11 +533,8 @@ void *thread_handler(void *arg){
     pthread_mutex_unlock(&mutex);
 
     if(p_clientdesc != NULL){
+
       //el cliente existe, entonces hay una conexión
-      //toma el tiempo actual
-
-
-
       printf("Conexión establecida.\n");
       //acá se llama a la función que gestiona las conexiones
       connection_handler(p_clientdesc);
@@ -526,8 +566,6 @@ void *connection_handler(void *p_client){
     strcat(logg, "Cliente ");
     strcat(logg, inet_ntoa(server.sin_addr));
 
-
-
     switch(choice){
       case '1': ingresar(clientdesc); break;
       case '2': ver(clientdesc);      break;
@@ -545,8 +583,6 @@ int main(){
 
   socklen_t len_addr = sizeof(struct sockaddr);
   socklen_t len_addr_in = sizeof(struct sockaddr_in);
-
-
 
   //cargar tabla hash
   hash_table = (int*)malloc(HASH_SIZE*sizeof(int));
@@ -602,7 +638,6 @@ int main(){
 
   while(1){
 
-
     //aceptar conexión
     clientdesc = accept(serverdesc, (struct sockaddr*)&server, &len_addr_in);
 
@@ -610,19 +645,14 @@ int main(){
       perror("Fallo en el accept");
       exit(-1);
     }
-
-
-    // printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
-    // printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
-
+    //apuntador al descriptor de cada cliente
     int *p_clientdesc = malloc(sizeof(int));
     *p_clientdesc = clientdesc;
+
+    //bloquear la cola para meter una conexión
     pthread_mutex_lock(&mutex);
     enqueue(p_clientdesc);
     pthread_mutex_unlock(&mutex);
   }
-
-  //menu
-
   return 0;
 }
