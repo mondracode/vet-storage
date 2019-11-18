@@ -44,8 +44,9 @@
 ehthumbs.db
 Thumbs.db
 
-#big files#
+# big files #
 *.dat
 *.bak
 
+!makefile
 118

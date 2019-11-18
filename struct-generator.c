@@ -8,7 +8,7 @@
 #define NAME_SIZE 32
 #define TYPE_SIZE 32
 #define BREED_SIZE 16
-#define RANGE 10000
+#define RANGE 10000000
 
 FILE *current_file;
 void ingresar();
