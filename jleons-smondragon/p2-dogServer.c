@@ -22,7 +22,7 @@
 #define TYPE_SIZE 32
 #define BREED_SIZE 16
 
-//thread pool
+//thread pool//
 pthread_t threads[BACKLOG];
 //mutex
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
