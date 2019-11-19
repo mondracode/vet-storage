@@ -219,6 +219,8 @@ void ver(int clientdesc){
     int sz = ftell(historia);
     rewind(historia);
 
+    printf("el tamaño es %i\n", sz);
+
     s = send(clientdesc, &sz, sizeof(int), 0);
 
     if(s < 0){
@@ -230,8 +232,8 @@ void ver(int clientdesc){
     //enviar archivo
     if(sz != 0){
       //sz++;
-      historia_contents = (char*)malloc(sz);
-      fgets(historia_contents, sz+1, historia);
+      historia_contents = (char*)malloc(sz+1);
+      fread(historia_contents, 1, sz, historia);
 
       s = send(clientdesc, historia_contents, sz, 0);
       if(s < 0){
@@ -239,8 +241,6 @@ void ver(int clientdesc){
         exit(-1);
       }
     }
-
-    int oldsz = sz;
 
     s = recv(clientdesc, &sz, sizeof(int), 0);
     if(s < 0){
@@ -254,7 +254,7 @@ void ver(int clientdesc){
     }
 
     if(sz > 1 ){
-      historia_contents = (char*)malloc(sz);
+      historia_contents = (char*)malloc(sz+1);
 
       s = recv(clientdesc, historia_contents, sz, 0);
       if(s < 0){
@@ -265,7 +265,7 @@ void ver(int clientdesc){
       fclose(historia);
 
       historia = fopen(pathname, "w+");
-      fputs(historia_contents, historia);
+      fwrite(historia_contents, 1, sz, historia);
 
       free(historia_contents);
     }

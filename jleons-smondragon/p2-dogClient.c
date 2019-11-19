@@ -182,17 +182,16 @@ void ver(int clientdesc){
 
     if(sz != 0){
       FILE *historia_file = fopen("temp.dat","w+");
-      historia_contents = (char*)malloc(sz);
+      historia_contents = (char*)malloc(sz+1);
 
       //recibir contenidos de la historia
-      s = recv(clientdesc, historia_contents, sz, 0);
+      s = recv(clientdesc, historia_contents, sz+1, 0);
       if(s < 0){
         perror("Error recv");
         exit(-1);
       }
 
-      fputs(historia_contents, historia_file);
-
+      fwrite(historia_contents, 1, sz, historia_file);
       fclose(historia_file);
     }
 
@@ -219,7 +218,7 @@ void ver(int clientdesc){
 
     if(sz > 1){
       //leer datos del nuevo archivo
-      fgets(historia_contents, sz+1, historia_file);
+      fread(historia_contents, 1, sz, historia_file);
 
       s = send(clientdesc, historia_contents, sz, 0);
       if(s < 0){
