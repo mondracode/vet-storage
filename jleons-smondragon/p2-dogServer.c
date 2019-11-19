@@ -89,8 +89,7 @@ struct dogType *get_patient(int number){
 
   if(read_result != sizeof(struct dogType)){
     printf("Se leyeron %i bytes.", read_result);
-    perror("La lectura del registro fallo.get_patient\n");
-    exit(-1);
+    return NULL;
   }
 
   fclose(current_file);
@@ -180,7 +179,7 @@ void ver(int clientdesc){
 
   s = send(clientdesc, &pet_amount, sizeof(int), 0);
   if(s < 0){
-    perror("Error send");
+    perror("Error send en amount");
     exit(-1);
   }
 
@@ -194,7 +193,7 @@ void ver(int clientdesc){
 
   s = send(clientdesc, read_patient, sizeof(struct dogType), 0);
   if(s < 0){
-    perror("Error send");
+    perror("Error send en estructura");
     exit(-1);
   }
 
@@ -224,7 +223,7 @@ void ver(int clientdesc){
     s = send(clientdesc, &sz, sizeof(int), 0);
 
     if(s < 0){
-      perror("Error send");
+      perror("Error send en sz");
       exit(-1);
     }
 
@@ -237,7 +236,7 @@ void ver(int clientdesc){
 
       s = send(clientdesc, historia_contents, sz, 0);
       if(s < 0){
-        perror("Error send");
+        perror("Error send en newsz");
         exit(-1);
       }
     }
@@ -538,6 +537,7 @@ void *thread_handler(void *arg){
       printf("Conexión establecida.\n");
       //acá se llama a la función que gestiona las conexiones
       connection_handler(p_clientdesc);
+
     }
   }
 }

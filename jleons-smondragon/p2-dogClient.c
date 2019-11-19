@@ -367,6 +367,7 @@ int main(){
     printf("5. Salir.\n");
     printf("Seleccione una opcion: ");
     choice = getchar();
+    scanf("%*[^\n]%1*[\n]");
 
     s = send(clientdesc, &choice, sizeof(char), 0);
     if(s < 0){
