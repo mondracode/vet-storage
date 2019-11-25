@@ -332,7 +332,8 @@ char *lower(char *str){
 
 int main(){
 
-  int clientdesc, r, s;
+  int clientdesc, r, s, search;
+  char *option;
   struct sockaddr_in client;
   socklen_t len_addr = sizeof(struct sockaddr);
   socklen_t len_addr_in = sizeof(struct sockaddr_in);
@@ -355,6 +356,7 @@ int main(){
   }while(r != 0);
 
   printf("Conectado!\n");
+  option = (char*)malloc(sizeof(char)*2);
 
   while(1){
     system("clear");
@@ -365,22 +367,34 @@ int main(){
     printf("3. Borrar paciente.\n");
     printf("4. Buscar paciente.\n");
     printf("5. Salir.\n");
-    printf("Seleccione una opcion: ");
-    choice = getchar();
-    scanf("%*[^\n]%1*[\n]");
 
-    s = send(clientdesc, &choice, sizeof(char), 0);
+
+    do{
+
+      printf("Seleccione una opcion: ");
+      //si la entrada no se puede recibir
+      if(!fgets(option, 2, stdin)){
+        perror("error recibiendo entrada");
+        exit(-1);
+      }
+
+      //convertir linea a numero
+      search = atoi(option);
+
+    }while(search > 5 || search < 1);
+
+    s = send(clientdesc, option, sizeof(char), 0);
     if(s < 0){
       perror("Error send");
       exit(-1);
     }
 
-    switch(choice){
-      case '1': ingresar(clientdesc); break;
-      case '2': ver(clientdesc); break;
-      case '3': borrar(clientdesc);   break;
-      case '4': buscar(clientdesc);   break;
-      case '5': system("clear"); exit(0);
+    switch(search){
+      case 1: ingresar(clientdesc); break;
+      case 2: ver(clientdesc); break;
+      case 3: borrar(clientdesc);   break;
+      case 4: buscar(clientdesc);   break;
+      case 5: system("clear"); exit(0);
 
     }
   }
