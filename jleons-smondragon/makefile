@@ -3,7 +3,6 @@ CC=gcc
 server: p2-dogServer.c
 	$(CC) p2-dogServer.c myqueue.o -o dogServer -lpthread
 
-
 client: p2-dogClient.c
 	$(CC) p2-dogClient.c -o dogClient
 

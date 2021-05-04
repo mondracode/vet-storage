@@ -20,4 +20,4 @@ This approach allows for 'reverse chaining' on the hash-table as shown on the fo
 
 The latest records of each hash code are stored in an int array on another file, which is loaded onto memory everytime the program is loaded.
 
-The code only runs on Linux and its socket has only been tested through localhost.
+The code only runs on Linux and its socket has only been tested through localhost. It can be compiled through `make all`, but you can also use `make client`; `make server` or `make generator` if you prefer to compile individual files.
