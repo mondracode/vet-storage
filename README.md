@@ -8,7 +8,7 @@ Vet Storage is a client-server program written for the Operating Systems course.
 
 The purpose of the program is to stablish a client-server connection between one server and up to 32 clients, each one connecting through a server thread.
 
-The client is then able to perform CRUD actions (Create, Read, Update, Delete) on a randomly generated dataset of 10 million records, that makes up to 1 gigabyte of disk space. Each record consists of the attributes name, species, age, breed, height, weight, sex and a special attribute called **_previous_**. More on that later on.
+The client is then able to perform CRUD actions (Create, Read, Update, Delete) on a randomly generated dataset of 10 million veterinary records, that makes up to 1 gigabyte of disk space. Each record consists of the attributes name, species, age, breed, height, weight, sex and a special attribute called **_previous_**. More on that later on.
 
 Check [struct-generator.c](https://github.com/smg5284/vet-storage/blob/master/jleons-smondragon/struct-generator.c) for more details on the random generation of records.
 
